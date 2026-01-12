@@ -1163,27 +1163,27 @@
 
     <script>
         // Инициализация переменных
-        let routePoints = []; // Массив всех точек маршрута
+        let routePoints = [];
         let routeLength = 0;
         let routeTime = 0;
         let totalCost = 0;
         let myMap;
         let routePolyline;
-        let placemarks = []; // Массив меток на карте
+        let placemarks = [];
         let transportSpeed = 15;
         let selectedTransport = 'bike';
         let pendingStartCoords = null;
         
         // Донаты
         let donationsHistory = [];
-        let activeDonation = 1000; // Активная сумма доната
+        let activeDonation = 1000;
         
-        // Таймер с миллисекундами
+        // Таймер
         let timerInterval = null;
         let timerMilliseconds = 0;
         let timerRunning = false;
         
-        // История для кнопки "Назад"
+        // История
         let historyStack = [];
         
         // Инициализация карты Яндекс
@@ -1196,13 +1196,11 @@
                 controls: ['zoomControl', 'fullscreenControl']
             });
             
-            // Обработчик двойного клика для установки начальной точки
             myMap.events.add('dblclick', function(e) {
                 const coords = e.get('coords');
                 showConfirmation(coords);
             });
             
-            // Создаем полилинию для маршрута
             routePolyline = new ymaps.Polyline([], {}, {
                 strokeColor: "#4cc9f0",
                 strokeWidth: 4,
@@ -1212,35 +1210,20 @@
             
             myMap.geoObjects.add(routePolyline);
             
-            // Инициализация таймера
             initTimer();
-            
-            // Инициализация транспорта
             initTransport();
-            
-            // Инициализация управления
             initControls();
-            
-            // Инициализация донатов
             initDonation();
-            
-            // Инициализация стоимости
             calculateCost();
-            
-            // Обновление отображения доната
             updateDonationDisplay();
-            
-            // Обновление сводки донатов
             updateDonationsSummary();
         }
         
-        // Показать подтверждение установки начальной точки
         function showConfirmation(coords) {
             pendingStartCoords = coords;
             document.getElementById('confirmationModal').style.display = 'flex';
         }
         
-        // Инициализация кнопок подтверждения
         function initConfirmation() {
             document.getElementById('confirmYes').addEventListener('click', function() {
                 document.getElementById('confirmationModal').style.display = 'none';
@@ -1256,15 +1239,14 @@
             });
         }
         
-        // Инициализация управления
         function initControls() {
-            // Добавляем обработчики для кнопок направления
+            // Кнопки направления
             document.getElementById('up').addEventListener('click', () => moveWithDonation('up'));
             document.getElementById('down').addEventListener('click', () => moveWithDonation('down'));
             document.getElementById('left').addEventListener('click', () => moveWithDonation('left'));
             document.getElementById('right').addEventListener('click', () => moveWithDonation('right'));
             
-            // Добавляем обработчики клавиш стрелок
+            // Стрелки клавиатуры
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'ArrowUp') moveWithDonation('up');
                 if (e.key === 'ArrowDown') moveWithDonation('down');
@@ -1282,12 +1264,14 @@
                 }
             });
             
-            // Кнопка "Финиш"
+            // Кнопка "Финиш" - ИСПРАВЛЕНА
             document.getElementById('finishBtn').addEventListener('click', function() {
+                console.log("Кнопка ФИНИШ нажата!");
                 if (routePoints.length < 2) {
                     alert("Сначала установите стартовую точку и сделайте хотя бы один ход!");
                     return;
                 }
+                console.log("Генерируем QR-код...");
                 generateQRCode();
                 document.getElementById('qrModal').style.display = 'flex';
             });
@@ -1297,43 +1281,35 @@
                 document.getElementById('qrModal').style.display = 'none';
             });
             
-            // Инициализация подтверждения
             initConfirmation();
             
-            // Обновление активного доната при изменении суммы
             document.getElementById('activeDonation').addEventListener('input', function() {
                 activeDonation = parseFloat(this.value) || 0;
                 updateDonationDisplay();
             });
             
-            // Обновление при изменении цены за метр
             document.getElementById('pricePerMeter').addEventListener('input', function() {
                 updateDonationDisplay();
                 calculateCost();
             });
         }
         
-        // Инициализация таймера с миллисекундами
         function initTimer() {
-            // Установка начального времени (10 минут)
             timerMilliseconds = 600000;
             updateTimerDisplay();
             
-            // Обработчики кнопок таймера
             document.getElementById('addMinute').addEventListener('click', () => addTime(60000));
             document.getElementById('subtractMinute').addEventListener('click', () => addTime(-60000));
             document.getElementById('startTimer').addEventListener('click', toggleTimer);
             document.getElementById('resetTimer').addEventListener('click', resetTimer);
         }
         
-        // Добавление/убавление времени
         function addTime(milliseconds) {
             timerMilliseconds += milliseconds;
             if (timerMilliseconds < 0) timerMilliseconds = 0;
             updateTimerDisplay();
         }
         
-        // Переключение таймера
         function toggleTimer() {
             if (timerRunning) {
                 pauseTimer();
@@ -1342,7 +1318,6 @@
             }
         }
         
-        // Запуск таймера
         function startTimer() {
             if (timerMilliseconds <= 0) return;
             
@@ -1368,7 +1343,6 @@
             }, 10);
         }
         
-        // Пауза таймера
         function pauseTimer() {
             timerRunning = false;
             clearInterval(timerInterval);
@@ -1378,14 +1352,12 @@
             startBtn.classList.add('start');
         }
         
-        // Сброс таймера
         function resetTimer() {
             pauseTimer();
-            timerMilliseconds = 600000; // 10 минут
+            timerMilliseconds = 600000;
             updateTimerDisplay();
         }
         
-        // Воспроизведение звука уведомления
         function playNotificationSound() {
             try {
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -1408,7 +1380,6 @@
             }
         }
         
-        // Форматирование времени
         function formatTime(milliseconds) {
             const totalSeconds = Math.floor(milliseconds / 1000);
             const hours = Math.floor(totalSeconds / 3600);
@@ -1419,7 +1390,6 @@
             return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
         }
         
-        // Обновление отображения таймера
         function updateTimerDisplay() {
             const display = document.getElementById('timerDisplay');
             display.textContent = formatTime(timerMilliseconds);
@@ -1433,7 +1403,6 @@
             }
         }
         
-        // Инициализация транспорта
         function initTransport() {
             const transportButtons = document.querySelectorAll('.transport-btn');
             
@@ -1460,13 +1429,10 @@
             });
         }
         
-        // Инициализация доната
         function initDonation() {
-            // Изначально активный донат
             activeDonation = parseFloat(document.getElementById('activeDonation').value) || 1000;
         }
         
-        // Обновление отображения доната
         function updateDonationDisplay() {
             const pricePerMeter = parseFloat(document.getElementById('pricePerMeter').value) || 1;
             const meters = Math.round(activeDonation / pricePerMeter);
@@ -1475,7 +1441,6 @@
             document.getElementById('donationMetersDisplay').textContent = `≈ ${meters} метров`;
         }
         
-        // Обновление сводки донатов
         function updateDonationsSummary() {
             const totalAmount = donationsHistory.reduce((sum, donation) => sum + donation.amount, 0);
             const totalMeters = donationsHistory.reduce((sum, donation) => sum + donation.meters, 0);
@@ -1484,15 +1449,11 @@
             document.getElementById('totalMeters').textContent = totalMeters;
         }
         
-        // Установка стартовой точки
         function setStartPoint(coords) {
-            // Очищаем предыдущий маршрут
             clearRoute();
             
-            // Добавляем стартовую точку
             addRoutePoint(coords, "СТАРТ", true);
             
-            // Создаем метку для стартовой точки (синяя)
             const startPlacemark = new ymaps.Placemark(coords, {
                 hintContent: "СТАРТ",
                 balloonContent: "Начальная точка маршрута"
@@ -1507,7 +1468,6 @@
             updateRouteDisplay();
         }
         
-        // Добавление точки маршрута
         function addRoutePoint(coords, title, isStart = false) {
             const point = {
                 coords: coords,
@@ -1520,7 +1480,6 @@
             updateMapRoute();
         }
         
-        // Движение с использованием доната
         function moveWithDonation(direction) {
             if (routePoints.length === 0) {
                 alert("Сначала установите стартовую точку двойным кликом на карту!");
@@ -1532,24 +1491,18 @@
                 return;
             }
             
-            // Сохраняем текущее состояние для отмены
             historyStack.push({
                 routePoints: [...routePoints],
                 routeLength: routeLength,
                 totalCost: totalCost
             });
             
-            // Рассчитываем количество метров за донат
             const pricePerMeter = parseFloat(document.getElementById('pricePerMeter').value) || 1;
             const meters = activeDonation / pricePerMeter;
-            
-            // Конвертируем метры в градусы (примерно 1 градус = 111000 метров)
             const degrees = meters / 111000;
             
-            // Получаем последнюю точку маршрута
             const lastPoint = routePoints[routePoints.length - 1].coords;
             
-            // Рассчитываем новую точку в зависимости от направления
             let newCoords;
             switch(direction) {
                 case 'up':
@@ -1566,13 +1519,9 @@
                     break;
             }
             
-            // Добавляем донат в историю
             addToDonationHistory(direction, activeDonation, meters);
-            
-            // Добавляем новую точку маршрута
             addRoutePoint(newCoords, `Ход ${routePoints.length}`);
             
-            // Создаем метку для новой точки (зеленая для донатов)
             const donationPlacemark = new ymaps.Placemark(newCoords, {
                 hintContent: `Донат: ${activeDonation}₽`,
                 balloonContent: `${direction.toUpperCase()}: ${meters.toFixed(0)} метров за ${activeDonation}₽`
@@ -1584,20 +1533,12 @@
             myMap.geoObjects.add(donationPlacemark);
             placemarks.push(donationPlacemark);
             
-            // Подсвечиваем кнопку направления
             highlightDirectionButton(direction);
-            
-            // Обновляем отображение
             updateRouteDisplay();
-            
-            // Обновляем сводку донатов
             updateDonationsSummary();
-            
-            // Обновляем общую стоимость
             calculateCost();
         }
         
-        // Добавление доната в историю
         function addToDonationHistory(direction, amount, meters) {
             const directionNames = {
                 'up': 'Вверх',
@@ -1614,12 +1555,9 @@
             };
             
             donationsHistory.unshift(historyItem);
-            
-            // Обновляем отображение истории
             updateDonationHistoryDisplay();
         }
         
-        // Обновление отображения истории донатов
         function updateDonationHistoryDisplay() {
             const historyContainer = document.getElementById('donationsHistory');
             historyContainer.innerHTML = '';
@@ -1641,7 +1579,6 @@
             });
         }
         
-        // Подсветка активной кнопки направления
         function highlightDirectionButton(direction) {
             document.querySelectorAll('.dir-btn-compact').forEach(btn => {
                 btn.classList.remove('active', 'donation-move');
@@ -1657,7 +1594,6 @@
             }
         }
         
-        // Отмена последнего хода
         function undoLastMove() {
             if (historyStack.length === 0) {
                 alert("Нечего отменять!");
@@ -1666,18 +1602,15 @@
             
             const previousState = historyStack.pop();
             
-            // Восстанавливаем предыдущее состояние
             routePoints = previousState.routePoints;
             routeLength = previousState.routeLength;
             totalCost = previousState.totalCost;
             
-            // Удаляем последнюю метку с карты
-            if (placemarks.length > 1) { // Оставляем стартовую метку
+            if (placemarks.length > 1) {
                 const lastPlacemark = placemarks.pop();
                 myMap.geoObjects.remove(lastPlacemark);
             }
             
-            // Удаляем последний донат из истории
             if (donationsHistory.length > 0) {
                 donationsHistory.shift();
                 updateDonationHistoryDisplay();
@@ -1689,19 +1622,16 @@
             calculateCost();
         }
         
-        // Очистка маршрута
         function clearRoute() {
             routePoints = [];
             historyStack = [];
             donationsHistory = [];
             
-            // Удаляем все метки с карты
             placemarks.forEach(mark => {
                 myMap.geoObjects.remove(mark);
             });
             placemarks = [];
             
-            // Очищаем полилинию
             routePolyline.geometry.setCoordinates([]);
             
             updateRouteDisplay();
@@ -1709,28 +1639,23 @@
             updateDonationsSummary();
         }
         
-        // Обновление маршрута на карте
         function updateMapRoute() {
             const coordinates = routePoints.map(point => point.coords);
             routePolyline.geometry.setCoordinates(coordinates);
             
-            // Центрируем карту на последней точке
             if (routePoints.length > 0) {
                 myMap.setCenter(routePoints[routePoints.length - 1].coords, 13, {duration: 300});
             }
         }
         
-        // Обновление отображения маршрута
         function updateRouteDisplay() {
             const routePointsContainer = document.getElementById('routePoints');
             routePointsContainer.innerHTML = '';
             
-            // Показываем только стартовую и последнюю точки
             if (routePoints.length > 0) {
                 const startPoint = routePoints[0];
                 const lastPoint = routePoints[routePoints.length - 1];
                 
-                // Стартовая точка
                 let startPointHtml = `
                     <div class="point-item">
                         <div class="point-icon start">С</div>
@@ -1741,7 +1666,6 @@
                     </div>
                 `;
                 
-                // Последняя точка
                 let lastPointHtml = `
                     <div class="point-item">
                         <div class="point-icon end">Ф</div>
@@ -1772,16 +1696,13 @@
                 `;
             }
             
-            // Рассчитываем общую длину маршрута
             calculateTotalRouteLength();
             calculateRouteTime();
             
-            // Обновляем информацию о маршруте
             document.getElementById('routeLength').textContent = `${routeLength.toFixed(0)} м`;
             document.getElementById('routeTime').textContent = `${routeTime.toFixed(0)} мин`;
         }
         
-        // Расчет общей длины маршрута
         function calculateTotalRouteLength() {
             routeLength = 0;
             
@@ -1796,7 +1717,6 @@
             }
         }
         
-        // Расчет времени маршрута
         function calculateRouteTime() {
             if (routeLength > 0 && transportSpeed > 0) {
                 const timeInHours = (routeLength / 1000) / transportSpeed;
@@ -1810,7 +1730,6 @@
                 `<span>Длина: ${routeLength.toFixed(0)} м</span><span>Время: ${routeTime.toFixed(0)} мин</span>`;
         }
         
-        // Расчет стоимости маршрута
         function calculateCost() {
             const pricePerMeter = parseFloat(document.getElementById('pricePerMeter').value) || 0;
             const totalDonations = donationsHistory.reduce((sum, donation) => sum + donation.amount, 0);
@@ -1821,68 +1740,43 @@
             document.getElementById('totalPrice').textContent = `${totalCost.toFixed(2)} ₽`;
         }
         
-        // Генерация QR-кода (РАБОЧАЯ ВЕРСИЯ)
+        // ПРОСТАЯ РАБОЧАЯ ФУНКЦИЯ QR-КОДА
         function generateQRCode() {
+            console.log("Запуск generateQRCode()");
+            
             const totalDonations = donationsHistory.reduce((sum, donation) => sum + donation.amount, 0);
             
-            // Создаем данные для QR-кода
-            const qrData = {
-                length: routeLength.toFixed(0),
-                time: routeTime.toFixed(0),
-                cost: totalCost.toFixed(2),
-                donations: totalDonations.toFixed(0),
-                transport: selectedTransport === 'walk' ? 'Пешком' : selectedTransport === 'bike' ? 'Велосипед' : 'Машина',
-                price: parseFloat(document.getElementById('pricePerMeter').value) || 0,
-                points: routePoints.length,
-                date: new Date().toLocaleString('ru-RU'),
-                start: routePoints.length > 0 ? `${routePoints[0].coords[0].toFixed(5)},${routePoints[0].coords[1].toFixed(5)}` : null,
-                end: routePoints.length > 0 ? `${routePoints[routePoints.length-1].coords[0].toFixed(5)},${routePoints[routePoints.length-1].coords[1].toFixed(5)}` : null
-            };
+            // Создаем простой текст для QR-кода
+            const qrText = `
+МАРШРУТ КАРТАЦИИ:
+Длина: ${routeLength.toFixed(0)} м
+Время: ${routeTime.toFixed(0)} мин
+Стоимость: ${totalCost.toFixed(2)} ₽
+Донаты: ${totalDonations.toFixed(0)} ₽
+Транспорт: ${selectedTransport === 'walk' ? 'Пешком' : selectedTransport === 'bike' ? 'Велосипед' : 'Машина'}
+Цена за метр: ${parseFloat(document.getElementById('pricePerMeter').value) || 0} ₽/м
+Точек маршрута: ${routePoints.length}
+Дата: ${new Date().toLocaleString('ru-RU')}
+`;
             
-            // Преобразуем в строку
-            const qrString = JSON.stringify(qrData);
-            
-            // Очищаем контейнер
             const qrContainer = document.getElementById('qrCode');
             qrContainer.innerHTML = '';
             
-            // Создаем canvas для QR-кода
-            const canvas = document.createElement('canvas');
-            qrContainer.appendChild(canvas);
+            // Используем Google Charts API для QR-кода - всегда работает
+            const qrUrl = `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(qrText)}&choe=UTF-8`;
             
-            // Генерируем QR-код
-            QRCode.toCanvas(canvas, qrString, {
-                width: 180,
-                margin: 1,
-                color: {
-                    dark: '#1a1a2e',
-                    light: '#ffffff'
-                }
-            }, function(error) {
-                if (error) {
-                    console.error("Ошибка генерации QR-кода:", error);
-                    // Показываем данные в виде текста
-                    qrContainer.innerHTML = `
-                        <div style="padding: 20px; text-align: center;">
-                            <p style="color: var(--success); margin-bottom: 10px;">
-                                <i class="fas fa-check-circle" style="font-size: 2rem;"></i>
-                            </p>
-                            <p style="color: white; font-weight: bold; margin-bottom: 5px;">Маршрут сохранен!</p>
-                            <div style="color: #94a3b8; font-size: 0.85rem; text-align: left; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 5px;">
-                                <div><strong>Длина:</strong> ${qrData.length} м</div>
-                                <div><strong>Время:</strong> ${qrData.time} мин</div>
-                                <div><strong>Стоимость:</strong> ${qrData.cost} ₽</div>
-                                <div><strong>Донаты:</strong> ${qrData.donations} ₽</div>
-                                <div><strong>Транспорт:</strong> ${qrData.transport}</div>
-                                <div><strong>Цена за метр:</strong> ${qrData.price} ₽/м</div>
-                                <div><strong>Точек маршрута:</strong> ${qrData.points}</div>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    console.log("QR-код успешно сгенерирован");
-                }
-            });
+            const img = document.createElement('img');
+            img.src = qrUrl;
+            img.alt = "QR-код маршрута";
+            img.style.width = "180px";
+            img.style.height = "180px";
+            img.style.borderRadius = "8px";
+            img.style.backgroundColor = "white";
+            img.style.padding = "5px";
+            
+            qrContainer.appendChild(img);
+            
+            console.log("QR-код создан через Google Charts API");
             
             // Обновляем информацию в модалке
             document.getElementById('qrLength').textContent = `${routeLength.toFixed(0)} м`;
@@ -1891,36 +1785,28 @@
             document.getElementById('qrDonations').textContent = `${totalDonations.toFixed(0)} ₽`;
         }
         
-        // Загружаем библиотеку QR-кода динамически
-        function loadQRCodeLibrary() {
-            return new Promise((resolve, reject) => {
-                if (typeof QRCode !== 'undefined') {
-                    resolve();
-                    return;
-                }
-                
-                const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-                script.onload = resolve;
-                script.onerror = reject;
-                document.head.appendChild(script);
-            });
-        }
-        
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', function() {
+            console.log("Документ загружен");
             calculateCost();
             
-            // Загружаем библиотеку QR-кода
-            loadQRCodeLibrary().then(() => {
-                console.log("Библиотека QR-кода загружена");
-            }).catch(error => {
-                console.error("Ошибка загрузки библиотеки QR-кода:", error);
-            });
+            // Проверяем, что кнопка существует
+            const finishBtn = document.getElementById('finishBtn');
+            if (finishBtn) {
+                console.log("Кнопка ФИНИШ найдена");
+                finishBtn.addEventListener('click', function() {
+                    console.log("Кнопка ФИНИШ нажата (второй обработчик)");
+                    if (routePoints.length < 2) {
+                        alert("Сначала установите стартовую точку и сделайте хотя бы один ход!");
+                        return;
+                    }
+                    generateQRCode();
+                    document.getElementById('qrModal').style.display = 'flex';
+                });
+            } else {
+                console.error("Кнопка ФИНИШ не найдена!");
+            }
         });
     </script>
-    
-    <!-- Подключаем библиотеку QR-кода -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </body>
 </html>
