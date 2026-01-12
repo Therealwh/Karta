@@ -1,0 +1,1940 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>КартаЦия PRO - Умный расчет маршрута</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- Подключаем библиотеку QR-кода -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Яндекс Карты API -->
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=2001ce9e-8526-43e3-88d1-46e20237699f&lang=ru_RU" type="text/javascript"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-light: #4cc9f0;
+            --secondary: #ef233c;
+            --success: #4ade80;
+            --warning: #f59e0b;
+            --dark: #0f172a;
+            --darker: #020617;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --card-bg: rgba(30, 41, 59, 0.8);
+            --border: rgba(100, 116, 139, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, var(--darker) 0%, var(--dark) 100%);
+            color: var(--light);
+            min-height: 100vh;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 350px 1fr 350px;
+            gap: 15px;
+            height: calc(100vh - 20px);
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 10px;
+            background: var(--card-bg);
+            border-radius: 14px;
+            margin-bottom: 5px;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .header h1 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.8rem;
+            background: linear-gradient(90deg, var(--primary-light), var(--primary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 3px;
+            font-weight: 800;
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        /* Левая панель - Маршрут и история */
+        .left-panel {
+            background: var(--card-bg);
+            border-radius: 14px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        .left-panel::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .left-panel::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+        }
+        
+        .left-panel::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        /* Правая панель - Управление */
+        .right-panel {
+            background: var(--card-bg);
+            border-radius: 14px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            height: 100%;
+        }
+
+        .right-panel::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .right-panel::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+        }
+        
+        .right-panel::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        .panel-section {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 10px;
+            padding: 15px;
+            border-left: 3px solid var(--primary-light);
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            color: var(--primary-light);
+            font-size: 1.05rem;
+            font-weight: 600;
+        }
+
+        .section-title i {
+            font-size: 1.2rem;
+        }
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #cbd5e1;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .input-with-icon {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-with-icon i {
+            position: absolute;
+            left: 10px;
+            color: var(--gray);
+            font-size: 1rem;
+        }
+
+        .input-with-icon input {
+            width: 100%;
+            padding: 10px 12px 10px 35px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+
+        .input-with-icon input:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 2px rgba(76, 201, 240, 0.2);
+        }
+
+        /* Активный донат */
+        .active-donation-section {
+            border-left-color: var(--success);
+        }
+
+        .donation-display {
+            background: rgba(74, 222, 128, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            margin-top: 10px;
+            border: 1px solid rgba(74, 222, 128, 0.2);
+        }
+
+        .donation-display .amount {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--success);
+            margin-bottom: 5px;
+        }
+
+        .donation-display .meters {
+            color: #a7f3d0;
+            font-size: 0.9rem;
+        }
+
+        /* Таймер с миллисекундами */
+        .timer-section {
+            border-left-color: var(--warning);
+        }
+
+        .timer-display {
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--light);
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            font-family: 'Roboto Mono', monospace;
+            border: 1.5px solid var(--border);
+            letter-spacing: 1px;
+        }
+
+        .timer-controls {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .timer-btn {
+            padding: 8px 5px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            font-size: 0.8rem;
+        }
+
+        .timer-btn.add {
+            background: rgba(76, 201, 240, 0.2);
+            color: var(--primary-light);
+            border: 1px solid rgba(76, 201, 240, 0.3);
+        }
+
+        .timer-btn.add:hover {
+            background: rgba(76, 201, 240, 0.3);
+        }
+
+        .timer-btn.subtract {
+            background: rgba(239, 35, 60, 0.2);
+            color: var(--secondary);
+            border: 1px solid rgba(239, 35, 60, 0.3);
+        }
+
+        .timer-btn.subtract:hover {
+            background: rgba(239, 35, 60, 0.3);
+        }
+
+        .timer-btn.start {
+            background: rgba(74, 222, 128, 0.2);
+            color: var(--success);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+        }
+
+        .timer-btn.start:hover {
+            background: rgba(74, 222, 128, 0.3);
+        }
+
+        .timer-btn.reset {
+            background: rgba(100, 116, 139, 0.2);
+            color: var(--gray);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+
+        .timer-btn.reset:hover {
+            background: rgba(100, 116, 139, 0.3);
+        }
+
+        /* Транспорт */
+        .transport-section {
+            border-left-color: #9d4edd;
+        }
+
+        .transport-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .transport-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 5px;
+            color: white;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .transport-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .transport-btn.active {
+            background: rgba(76, 201, 240, 0.2);
+            border-color: var(--primary-light);
+            box-shadow: 0 3px 10px rgba(76, 201, 240, 0.2);
+        }
+
+        .transport-btn i {
+            font-size: 1.2rem;
+        }
+
+        /* Управление направлением */
+        .directions-section {
+            border-left-color: #f59e0b;
+        }
+
+        .directions-compact {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .dir-btn-compact {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            color: white;
+            font-size: 1.1rem;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .dir-btn-compact:hover {
+            background: rgba(76, 201, 240, 0.2);
+            border-color: var(--primary-light);
+        }
+
+        .dir-btn-compact.active {
+            background: rgba(76, 201, 240, 0.3);
+            border-color: var(--primary-light);
+            box-shadow: 0 0 8px rgba(76, 201, 240, 0.5);
+        }
+
+        .dir-btn-compact.donation-move {
+            background: rgba(74, 222, 128, 0.3);
+            border-color: var(--success);
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+            animation: pulseDonation 1s infinite;
+        }
+
+        .dir-btn-compact.up {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        .dir-btn-compact.down {
+            grid-column: 2;
+            grid-row: 3;
+        }
+
+        .dir-btn-compact.left {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .dir-btn-compact.right {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        /* История донатов - Левая панель */
+        .donations-history-section {
+            border-left-color: var(--success);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .donations-history-container {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: 8px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 8px;
+        }
+
+        .donations-history-container::-webkit-scrollbar {
+            width: 3px;
+        }
+        
+        .donations-history-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .donations-history-container::-webkit-scrollbar-thumb {
+            background: var(--success);
+            border-radius: 2px;
+        }
+
+        .donation-history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            border-left: 3px solid var(--success);
+            transition: all 0.2s;
+        }
+
+        .donation-history-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(2px);
+        }
+
+        .donation-history-direction {
+            color: var(--primary-light);
+            font-weight: 600;
+            min-width: 50px;
+        }
+
+        .donation-history-amount {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .donation-history-meters {
+            color: #a7f3d0;
+        }
+
+        .donations-summary {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .summary-total {
+            color: var(--success);
+        }
+
+        .summary-meters {
+            color: var(--primary-light);
+        }
+
+        /* Маршрут - Левая панель */
+        .route-section {
+            border-left-color: var(--primary);
+        }
+
+        .points-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .point-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .point-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(2px);
+        }
+
+        .point-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .point-icon.start {
+            background: linear-gradient(135deg, var(--primary), #3a56d4);
+            color: white;
+            box-shadow: 0 0 10px rgba(67, 97, 238, 0.5);
+        }
+
+        .point-icon.end {
+            background: linear-gradient(135deg, var(--secondary), #d90429);
+            color: white;
+            box-shadow: 0 0 10px rgba(239, 35, 60, 0.5);
+        }
+
+        .point-details {
+            flex: 1;
+        }
+
+        .point-title {
+            font-weight: 600;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+
+        .point-coords {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        .route-info {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+            color: #cbd5e1;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        .info-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .info-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .info-value {
+            display: block;
+            font-weight: 700;
+            font-size: 1rem;
+            margin-top: 3px;
+            color: white;
+        }
+
+        /* Кнопки действий */
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .btn {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, var(--primary), #3a56d4);
+            color: white;
+            box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3);
+            grid-column: 1 / -1;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(67, 97, 238, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: white;
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .btn-finish {
+            background: linear-gradient(90deg, var(--secondary), #d90429);
+            color: white;
+            box-shadow: 0 4px 10px rgba(239, 35, 60, 0.3);
+            grid-column: 1 / -1;
+        }
+
+        .btn-finish:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(239, 35, 60, 0.4);
+        }
+
+        /* Карта */
+        .map-container {
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            position: relative;
+            height: 100%;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .map-overlay {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 10px;
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            max-width: 250px;
+            border: 1px solid var(--border);
+        }
+
+        .map-overlay h3 {
+            color: var(--primary-light);
+            margin-bottom: 6px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .map-overlay p {
+            color: #cbd5e1;
+            font-size: 0.8rem;
+            line-height: 1.3;
+            margin-bottom: 4px;
+        }
+
+        /* QR модалка */
+        .qr-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .qr-content {
+            background: linear-gradient(135deg, var(--darker) 0%, var(--dark) 100%);
+            padding: 25px;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 350px;
+            width: 90%;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(76, 201, 240, 0.3);
+        }
+
+        .qr-content h2 {
+            color: var(--primary-light);
+            margin-bottom: 12px;
+            font-size: 1.4rem;
+        }
+
+        #qrCode {
+            margin: 12px auto;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            display: inline-block;
+            min-height: 200px;
+            min-width: 200px;
+        }
+
+        .qr-info {
+            margin-top: 12px;
+            color: #cbd5e1;
+            font-size: 0.85rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .qr-close {
+            background: linear-gradient(90deg, var(--secondary), #d90429);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s;
+            width: 100%;
+        }
+
+        .qr-close:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(239, 35, 60, 0.4);
+        }
+
+        /* Подтверждение */
+        .confirmation-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .confirmation-content {
+            background: linear-gradient(135deg, var(--darker) 0%, var(--dark) 100%);
+            padding: 25px;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 350px;
+            width: 90%;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(76, 201, 240, 0.3);
+        }
+
+        .confirmation-content h2 {
+            color: var(--primary-light);
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+        }
+
+        .confirmation-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .confirm-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .confirm-btn.yes {
+            background: linear-gradient(90deg, var(--success), #22c55e);
+            color: white;
+        }
+
+        .confirm-btn.no {
+            background: linear-gradient(90deg, var(--secondary), #d90429);
+            color: white;
+        }
+
+        /* Анимации */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes pulseDonation {
+            0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(74, 222, 128, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+        }
+
+        .pulse {
+            animation: pulse 1s infinite;
+        }
+
+        .donation-move {
+            animation: pulseDonation 2s infinite;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 300px 1fr 300px;
+                gap: 12px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto;
+                height: auto;
+                gap: 10px;
+            }
+            
+            .left-panel, .right-panel {
+                height: auto;
+                max-height: 400px;
+            }
+            
+            .map-container {
+                height: 500px;
+                grid-row: 2;
+            }
+            
+            .left-panel {
+                grid-row: 1;
+            }
+            
+            .right-panel {
+                grid-row: 3;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                gap: 8px;
+            }
+            
+            .map-container {
+                height: 350px;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .transport-options {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Цена за метр */
+        .price-display {
+            background: rgba(76, 201, 240, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            margin-top: 10px;
+            border: 1px solid rgba(76, 201, 240, 0.2);
+        }
+
+        .price-display .total {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--primary-light);
+            margin-bottom: 5px;
+        }
+
+        .price-display .details {
+            color: #a0a0c0;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-map-marked-alt"></i> КАРТАЦИЯ PRO</h1>
+            <p>Умный расчет маршрута с автоматическими донатами</p>
+        </div>
+
+        <!-- Левая панель: Маршрут и история донатов -->
+        <div class="left-panel">
+            <!-- Маршрут -->
+            <div class="panel-section route-section">
+                <div class="section-title">
+                    <i class="fas fa-route"></i>
+                    <span>МАРШРУТ</span>
+                </div>
+                
+                <div class="points-container" id="routePoints">
+                    <div class="point-item">
+                        <div class="point-icon start">С</div>
+                        <div class="point-details">
+                            <div class="point-title">СТАРТ</div>
+                            <div class="point-coords">Двойной клик на карту</div>
+                        </div>
+                    </div>
+                    <div class="point-item">
+                        <div class="point-icon end">Ф</div>
+                        <div class="point-details">
+                            <div class="point-title">ФИНИШ</div>
+                            <div class="point-coords">Используйте стрелки</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="route-info">
+                    <div class="info-item">
+                        <div>Длина</div>
+                        <div class="info-value" id="routeLength">0 м</div>
+                    </div>
+                    <div class="info-item">
+                        <div>Время</div>
+                        <div class="info-value" id="routeTime">0 мин</div>
+                    </div>
+                    <div class="info-item">
+                        <div>Транспорт</div>
+                        <div class="info-value" id="transportType">Вело</div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-finish" id="finishBtn">
+                        <i class="fas fa-flag-checkered"></i> ФИНИШ И QR-КОД
+                    </button>
+                </div>
+            </div>
+            
+            <!-- История донатов -->
+            <div class="panel-section donations-history-section">
+                <div class="section-title">
+                    <i class="fas fa-history"></i>
+                    <span>ИСТОРИЯ ДОНАТОВ</span>
+                </div>
+                
+                <div class="donations-history-container" id="donationsHistory">
+                    <!-- История будет добавляться здесь -->
+                    <div style="color: #94a3b8; text-align: center; padding: 20px;">
+                        История донатов пуста
+                    </div>
+                </div>
+                
+                <div class="donations-summary">
+                    <div>Всего: <span class="summary-total" id="totalDonations">0 ₽</span></div>
+                    <div>Метров: <span class="summary-meters" id="totalMeters">0</span></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Карта по центру -->
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="map-overlay">
+                <h3><i class="fas fa-info-circle"></i> Управление</h3>
+                <p><i class="fas fa-mouse-pointer"></i> Двойной клик - СТАРТ</p>
+                <p><i class="fas fa-arrows-alt"></i> Стрелки - ФИНИШ + донат</p>
+                <p><i class="fas fa-donate"></i> 1000₽ = 100 метров</p>
+            </div>
+        </div>
+        
+        <!-- Правая панель: Управление -->
+        <div class="right-panel">
+            <!-- Активный донат -->
+            <div class="panel-section active-donation-section">
+                <div class="section-title">
+                    <i class="fas fa-donate"></i>
+                    <span>АКТИВНЫЙ ДОНАТ</span>
+                </div>
+                
+                <div class="input-group">
+                    <label>Введите сумму доната (₽)</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-heart"></i>
+                        <input type="number" id="activeDonation" min="0" value="1000" step="50">
+                    </div>
+                </div>
+                
+                <div class="donation-display">
+                    <div class="amount" id="donationAmountDisplay">1000 ₽</div>
+                    <div class="meters" id="donationMetersDisplay">≈ 100 метров</div>
+                </div>
+                
+                <div style="margin-top: 10px; font-size: 0.85rem; color: #94a3b8; text-align: center;">
+                    <i class="fas fa-info-circle"></i> Нажмите стрелку, чтобы потратить донат
+                </div>
+            </div>
+            
+            <!-- Стоимость -->
+            <div class="panel-section">
+                <div class="section-title">
+                    <i class="fas fa-ruble-sign"></i>
+                    <span>СТОИМОСТЬ</span>
+                </div>
+                
+                <div class="input-group">
+                    <label>Цена за 1 метр (₽/м)</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-road"></i>
+                        <input type="number" id="pricePerMeter" min="1" value="10" step="0.5">
+                    </div>
+                </div>
+                
+                <div class="price-display">
+                    <div class="total" id="totalPrice">0 ₽</div>
+                    <div class="details" id="priceDetails">
+                        <span>Длина: 0 м</span>
+                        <span>Время: 0 мин</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Таймер -->
+            <div class="panel-section timer-section">
+                <div class="section-title">
+                    <i class="fas fa-stopwatch"></i>
+                    <span>ТАЙМЕР</span>
+                </div>
+                
+                <div class="timer-display" id="timerDisplay">00:00:00.000</div>
+                
+                <div class="timer-controls">
+                    <button class="timer-btn add" id="addMinute">
+                        <i class="fas fa-plus"></i> 1м
+                    </button>
+                    <button class="timer-btn subtract" id="subtractMinute">
+                        <i class="fas fa-minus"></i> 1м
+                    </button>
+                    <button class="timer-btn start" id="startTimer">
+                        <i class="fas fa-play"></i> Старт
+                    </button>
+                    <button class="timer-btn reset" id="resetTimer">
+                        <i class="fas fa-redo"></i> Сброс
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Транспорт -->
+            <div class="panel-section transport-section">
+                <div class="section-title">
+                    <i class="fas fa-bicycle"></i>
+                    <span>ТРАНСПОРТ</span>
+                </div>
+                
+                <div class="transport-options">
+                    <button class="transport-btn" id="transportWalk" data-speed="5">
+                        <i class="fas fa-walking"></i>
+                        <span>Пешком</span>
+                    </button>
+                    <button class="transport-btn active" id="transportBike" data-speed="15">
+                        <i class="fas fa-bicycle"></i>
+                        <span>Велосипед</span>
+                    </button>
+                    <button class="transport-btn" id="transportCar" data-speed="40">
+                        <i class="fas fa-car"></i>
+                        <span>Машина</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Управление направлением -->
+            <div class="panel-section directions-section">
+                <div class="section-title">
+                    <i class="fas fa-directions"></i>
+                    <span>УПРАВЛЕНИЕ</span>
+                </div>
+                
+                <div class="directions-compact">
+                    <div class="dir-btn-compact up" id="up" title="Вверх">
+                        <i class="fas fa-arrow-up"></i>
+                    </div>
+                    <div class="dir-btn-compact down" id="down" title="Вниз">
+                        <i class="fas fa-arrow-down"></i>
+                    </div>
+                    <div class="dir-btn-compact left" id="left" title="Влево">
+                        <i class="fas fa-arrow-left"></i>
+                    </div>
+                    <div class="dir-btn-compact right" id="right" title="Вправо">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-secondary" id="clearBtn">
+                        <i class="fas fa-trash-alt"></i> Очистить
+                    </button>
+                    <button class="btn btn-secondary" id="undoBtn">
+                        <i class="fas fa-undo"></i> Назад
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- QR модалка -->
+    <div class="qr-modal" id="qrModal">
+        <div class="qr-content">
+            <h2><i class="fas fa-qrcode"></i> QR-КОД МАРШРУТА</h2>
+            <p>Отсканируйте для получения маршрута</p>
+            <div id="qrCode"></div>
+            <div class="qr-info">
+                <div>Длина: <span id="qrLength">0 м</span></div>
+                <div>Время: <span id="qrTime">0 мин</span></div>
+                <div>Стоимость: <span id="qrCost">0 ₽</span></div>
+                <div>Донаты: <span id="qrDonations">0 ₽</span></div>
+            </div>
+            <button class="qr-close" id="closeQrBtn">ЗАКРЫТЬ</button>
+        </div>
+    </div>
+    
+    <!-- Подтверждение начальной точки -->
+    <div class="confirmation-modal" id="confirmationModal">
+        <div class="confirmation-content">
+            <h2><i class="fas fa-map-marker-alt"></i> Подтверждение</h2>
+            <p>Вы уверены, что хотите установить начальную точку здесь?</p>
+            <div class="confirmation-buttons">
+                <button class="confirm-btn yes" id="confirmYes">ДА, УСТАНОВИТЬ</button>
+                <button class="confirm-btn no" id="confirmNo">ОТМЕНА</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Инициализация переменных
+        let routePoints = []; // Массив всех точек маршрута
+        let routeLength = 0;
+        let routeTime = 0;
+        let totalCost = 0;
+        let myMap;
+        let routePolyline;
+        let placemarks = []; // Массив меток на карте
+        let transportSpeed = 15;
+        let selectedTransport = 'bike';
+        let pendingStartCoords = null;
+        
+        // Донаты
+        let donationsHistory = [];
+        let activeDonation = 1000; // Активная сумма доната
+        
+        // Таймер с миллисекундами
+        let timerInterval = null;
+        let timerMilliseconds = 0;
+        let timerRunning = false;
+        
+        // История для кнопки "Назад"
+        let historyStack = [];
+        
+        // Переменная для хранения экземпляра QR-кода
+        let qrCodeInstance = null;
+        
+        // Инициализация карты Яндекс
+        ymaps.ready(initMap);
+        
+        function initMap() {
+            myMap = new ymaps.Map("map", {
+                center: [55.751244, 37.618423],
+                zoom: 13,
+                controls: ['zoomControl', 'fullscreenControl']
+            });
+            
+            // Обработчик двойного клика для установки начальной точки
+            myMap.events.add('dblclick', function(e) {
+                const coords = e.get('coords');
+                showConfirmation(coords);
+            });
+            
+            // Создаем полилинию для маршрута
+            routePolyline = new ymaps.Polyline([], {}, {
+                strokeColor: "#4cc9f0",
+                strokeWidth: 4,
+                strokeOpacity: 0.9,
+                strokeStyle: 'solid'
+            });
+            
+            myMap.geoObjects.add(routePolyline);
+            
+            // Инициализация таймера
+            initTimer();
+            
+            // Инициализация транспорта
+            initTransport();
+            
+            // Инициализация управления
+            initControls();
+            
+            // Инициализация донатов
+            initDonation();
+            
+            // Инициализация стоимости
+            calculateCost();
+            
+            // Обновление отображения доната
+            updateDonationDisplay();
+            
+            // Обновление сводки донатов
+            updateDonationsSummary();
+        }
+        
+        // Показать подтверждение установки начальной точки
+        function showConfirmation(coords) {
+            pendingStartCoords = coords;
+            document.getElementById('confirmationModal').style.display = 'flex';
+        }
+        
+        // Инициализация кнопок подтверждения
+        function initConfirmation() {
+            document.getElementById('confirmYes').addEventListener('click', function() {
+                document.getElementById('confirmationModal').style.display = 'none';
+                if (pendingStartCoords) {
+                    setStartPoint(pendingStartCoords);
+                    pendingStartCoords = null;
+                }
+            });
+            
+            document.getElementById('confirmNo').addEventListener('click', function() {
+                document.getElementById('confirmationModal').style.display = 'none';
+                pendingStartCoords = null;
+            });
+        }
+        
+        // Инициализация управления
+        function initControls() {
+            // Добавляем обработчики для кнопок направления
+            document.getElementById('up').addEventListener('click', () => moveWithDonation('up'));
+            document.getElementById('down').addEventListener('click', () => moveWithDonation('down'));
+            document.getElementById('left').addEventListener('click', () => moveWithDonation('left'));
+            document.getElementById('right').addEventListener('click', () => moveWithDonation('right'));
+            
+            // Добавляем обработчики клавиш стрелок
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowUp') moveWithDonation('up');
+                if (e.key === 'ArrowDown') moveWithDonation('down');
+                if (e.key === 'ArrowLeft') moveWithDonation('left');
+                if (e.key === 'ArrowRight') moveWithDonation('right');
+            });
+            
+            // Кнопка "Назад"
+            document.getElementById('undoBtn').addEventListener('click', undoLastMove);
+            
+            // Кнопка "Очистить"
+            document.getElementById('clearBtn').addEventListener('click', function() {
+                if (confirm("Вы уверены, что хотите очистить весь маршрут?")) {
+                    clearRoute();
+                }
+            });
+            
+            // Кнопка "Финиш"
+            document.getElementById('finishBtn').addEventListener('click', function() {
+                if (routePoints.length < 2) {
+                    alert("Сначала установите стартовую точку и сделайте хотя бы один ход!");
+                    return;
+                }
+                generateQRCode();
+                document.getElementById('qrModal').style.display = 'flex';
+            });
+            
+            // Кнопка закрытия QR
+            document.getElementById('closeQrBtn').addEventListener('click', function() {
+                document.getElementById('qrModal').style.display = 'none';
+            });
+            
+            // Инициализация подтверждения
+            initConfirmation();
+            
+            // Обновление активного доната при изменении суммы
+            document.getElementById('activeDonation').addEventListener('input', function() {
+                activeDonation = parseFloat(this.value) || 0;
+                updateDonationDisplay();
+            });
+            
+            // Обновление при изменении цены за метр
+            document.getElementById('pricePerMeter').addEventListener('input', function() {
+                updateDonationDisplay();
+                calculateCost();
+            });
+        }
+        
+        // Инициализация таймера с миллисекундами
+        function initTimer() {
+            // Установка начального времени (10 минут)
+            timerMilliseconds = 600000;
+            updateTimerDisplay();
+            
+            // Обработчики кнопок таймера
+            document.getElementById('addMinute').addEventListener('click', () => addTime(60000));
+            document.getElementById('subtractMinute').addEventListener('click', () => addTime(-60000));
+            document.getElementById('startTimer').addEventListener('click', toggleTimer);
+            document.getElementById('resetTimer').addEventListener('click', resetTimer);
+        }
+        
+        // Добавление/убавление времени
+        function addTime(milliseconds) {
+            timerMilliseconds += milliseconds;
+            if (timerMilliseconds < 0) timerMilliseconds = 0;
+            updateTimerDisplay();
+        }
+        
+        // Переключение таймера
+        function toggleTimer() {
+            if (timerRunning) {
+                pauseTimer();
+            } else {
+                startTimer();
+            }
+        }
+        
+        // Запуск таймера
+        function startTimer() {
+            if (timerMilliseconds <= 0) return;
+            
+            timerRunning = true;
+            const startBtn = document.getElementById('startTimer');
+            startBtn.innerHTML = '<i class="fas fa-pause"></i> Пауза';
+            startBtn.classList.remove('start');
+            startBtn.classList.add('subtract');
+            
+            const startTime = Date.now() - (timerMilliseconds % 1000);
+            
+            timerInterval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                timerMilliseconds = Math.max(0, timerMilliseconds - elapsed + (timerMilliseconds % 1000));
+                
+                if (timerMilliseconds <= 0) {
+                    pauseTimer();
+                    timerMilliseconds = 0;
+                    playNotificationSound();
+                }
+                
+                updateTimerDisplay();
+            }, 10);
+        }
+        
+        // Пауза таймера
+        function pauseTimer() {
+            timerRunning = false;
+            clearInterval(timerInterval);
+            const startBtn = document.getElementById('startTimer');
+            startBtn.innerHTML = '<i class="fas fa-play"></i> Старт';
+            startBtn.classList.remove('subtract');
+            startBtn.classList.add('start');
+        }
+        
+        // Сброс таймера
+        function resetTimer() {
+            pauseTimer();
+            timerMilliseconds = 600000; // 10 минут
+            updateTimerDisplay();
+        }
+        
+        // Воспроизведение звука уведомления
+        function playNotificationSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch (e) {
+                console.log("Аудио контекст не поддерживается");
+            }
+        }
+        
+        // Форматирование времени
+        function formatTime(milliseconds) {
+            const totalSeconds = Math.floor(milliseconds / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            const ms = milliseconds % 1000;
+            
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+        }
+        
+        // Обновление отображения таймера
+        function updateTimerDisplay() {
+            const display = document.getElementById('timerDisplay');
+            display.textContent = formatTime(timerMilliseconds);
+            
+            if (timerMilliseconds < 10000 && timerRunning) {
+                display.classList.add('pulse');
+                display.style.color = 'var(--secondary)';
+            } else {
+                display.classList.remove('pulse');
+                display.style.color = 'var(--light)';
+            }
+        }
+        
+        // Инициализация транспорта
+        function initTransport() {
+            const transportButtons = document.querySelectorAll('.transport-btn');
+            
+            transportButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    transportButtons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    transportSpeed = parseInt(this.dataset.speed);
+                    
+                    if (this.id === 'transportWalk') {
+                        selectedTransport = 'walk';
+                        document.getElementById('transportType').textContent = 'Пешком';
+                    } else if (this.id === 'transportBike') {
+                        selectedTransport = 'bike';
+                        document.getElementById('transportType').textContent = 'Вело';
+                    } else if (this.id === 'transportCar') {
+                        selectedTransport = 'car';
+                        document.getElementById('transportType').textContent = 'Машина';
+                    }
+                    
+                    calculateRouteTime();
+                });
+            });
+        }
+        
+        // Инициализация доната
+        function initDonation() {
+            // Изначально активный донат
+            activeDonation = parseFloat(document.getElementById('activeDonation').value) || 1000;
+        }
+        
+        // Обновление отображения доната
+        function updateDonationDisplay() {
+            const pricePerMeter = parseFloat(document.getElementById('pricePerMeter').value) || 1;
+            const meters = Math.round(activeDonation / pricePerMeter);
+            
+            document.getElementById('donationAmountDisplay').textContent = `${activeDonation.toFixed(0)} ₽`;
+            document.getElementById('donationMetersDisplay').textContent = `≈ ${meters} метров`;
+        }
+        
+        // Обновление сводки донатов
+        function updateDonationsSummary() {
+            const totalAmount = donationsHistory.reduce((sum, donation) => sum + donation.amount, 0);
+            const totalMeters = donationsHistory.reduce((sum, donation) => sum + donation.meters, 0);
+            
+            document.getElementById('totalDonations').textContent = `${totalAmount.toFixed(0)} ₽`;
+            document.getElementById('totalMeters').textContent = totalMeters;
+        }
+        
+        // Установка стартовой точки
+        function setStartPoint(coords) {
+            // Очищаем предыдущий маршрут
+            clearRoute();
+            
+            // Добавляем стартовую точку
+            addRoutePoint(coords, "СТАРТ", true);
+            
+            // Создаем метку для стартовой точки (синяя)
+            const startPlacemark = new ymaps.Placemark(coords, {
+                hintContent: "СТАРТ",
+                balloonContent: "Начальная точка маршрута"
+            }, {
+                preset: 'islands#blueCircleIcon',
+                iconColor: '#4361ee'
+            });
+            
+            myMap.geoObjects.add(startPlacemark);
+            placemarks.push(startPlacemark);
+            
+            updateRouteDisplay();
+        }
+        
+        // Добавление точки маршрута
+        function addRoutePoint(coords, title, isStart = false) {
+            const point = {
+                coords: coords,
+                title: title,
+                index: routePoints.length + 1,
+                isStart: isStart
+            };
+            
+            routePoints.push(point);
+            updateMapRoute();
+        }
+        
+        // Движение с использованием доната
+        function moveWithDonation(direction) {
+            if (routePoints.length === 0) {
+                alert("Сначала установите стартовую точку двойным кликом на карту!");
+                return;
+            }
+            
+            if (activeDonation <= 0) {
+                alert("Введите сумму доната больше 0!");
+                return;
+            }
+            
+            // Сохраняем текущее состояние для отмены
+            historyStack.push({
+                routePoints: [...routePoints],
+                routeLength: routeLength,
+                totalCost: totalCost
+            });
+            
+            // Рассчитываем количество метров за донат
+            const pricePerMeter = parseFloat(document.getElementById('pricePerMeter').value) || 1;
+            const meters = activeDonation / pricePerMeter;
+            
+            // Конвертируем метры в градусы (примерно 1 градус = 111000 метров)
+            const degrees = meters / 111000;
+            
+            // Получаем последнюю точку маршрута
+            const lastPoint = routePoints[routePoints.length - 1].coords;
+            
+            // Рассчитываем новую точку в зависимости от направления
+            let newCoords;
+            switch(direction) {
+                case 'up':
+                    newCoords = [lastPoint[0] + degrees, lastPoint[1]];
+                    break;
+                case 'down':
+                    newCoords = [lastPoint[0] - degrees, lastPoint[1]];
+                    break;
+                case 'left':
+                    newCoords = [lastPoint[0], lastPoint[1] - degrees];
+                    break;
+                case 'right':
+                    newCoords = [lastPoint[0], lastPoint[1] + degrees];
+                    break;
+            }
+            
+            // Добавляем донат в историю
+            addToDonationHistory(direction, activeDonation, meters);
+            
+            // Добавляем новую точку маршрута
+            addRoutePoint(newCoords, `Ход ${routePoints.length}`);
+            
+            // Создаем метку для новой точки (зеленая для донатов)
+            const donationPlacemark = new ymaps.Placemark(newCoords, {
+                hintContent: `Донат: ${activeDonation}₽`,
+                balloonContent: `${direction.toUpperCase()}: ${meters.toFixed(0)} метров за ${activeDonation}₽`
+            }, {
+                preset: 'islands#greenDotIcon',
+                iconColor: '#4ade80'
+            });
+            
+            myMap.geoObjects.add(donationPlacemark);
+            placemarks.push(donationPlacemark);
+            
+            // Подсвечиваем кнопку направления
+            highlightDirectionButton(direction);
+            
+            // Обновляем отображение
+            updateRouteDisplay();
+            
+            // Обновляем сводку донатов
+            updateDonationsSummary();
+            
+            // Обновляем общую стоимость
+            calculateCost();
+        }
+        
+        // Добавление доната в историю
+        function addToDonationHistory(direction, amount, meters) {
+            const directionNames = {
+                'up': 'Вверх',
+                'down': 'Вниз',
+                'left': 'Влево',
+                'right': 'Вправо'
+            };
+            
+            const historyItem = {
+                direction: directionNames[direction],
+                amount: amount,
+                meters: Math.round(meters),
+                timestamp: new Date().toISOString()
+            };
+            
+            donationsHistory.unshift(historyItem);
+            
+            // Обновляем отображение истории
+            updateDonationHistoryDisplay();
+        }
+        
+        // Обновление отображения истории донатов
+        function updateDonationHistoryDisplay() {
+            const historyContainer = document.getElementById('donationsHistory');
+            historyContainer.innerHTML = '';
+            
+            if (donationsHistory.length === 0) {
+                historyContainer.innerHTML = '<div style="color: #94a3b8; text-align: center; padding: 20px;">История донатов пуста</div>';
+                return;
+            }
+            
+            donationsHistory.forEach(donation => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'donation-history-item';
+                historyItem.innerHTML = `
+                    <span class="donation-history-direction">${donation.direction}</span>
+                    <span class="donation-history-amount">${donation.amount.toFixed(0)} ₽</span>
+                    <span class="donation-history-meters">${donation.meters} м</span>
+                `;
+                historyContainer.appendChild(historyItem);
+            });
+        }
+        
+        // Подсветка активной кнопки направления
+        function highlightDirectionButton(direction) {
+            document.querySelectorAll('.dir-btn-compact').forEach(btn => {
+                btn.classList.remove('active', 'donation-move');
+            });
+            
+            const activeBtn = document.getElementById(direction);
+            if (activeBtn) {
+                activeBtn.classList.add('active', 'donation-move');
+                
+                setTimeout(() => {
+                    activeBtn.classList.remove('active', 'donation-move');
+                }, 1000);
+            }
+        }
+        
+        // Отмена последнего хода
+        function undoLastMove() {
+            if (historyStack.length === 0) {
+                alert("Нечего отменять!");
+                return;
+            }
+            
+            const previousState = historyStack.pop();
+            
+            // Восстанавливаем предыдущее состояние
+            routePoints = previousState.routePoints;
+            routeLength = previousState.routeLength;
+            totalCost = previousState.totalCost;
+            
+            // Удаляем последнюю метку с карты
+            if (placemarks.length > 1) { // Оставляем стартовую метку
+                const lastPlacemark = placemarks.pop();
+                myMap.geoObjects.remove(lastPlacemark);
+            }
+            
+            // Удаляем последний донат из истории
+            if (donationsHistory.length > 0) {
+                donationsHistory.shift();
+                updateDonationHistoryDisplay();
+                updateDonationsSummary();
+            }
+            
+            updateMapRoute();
+            updateRouteDisplay();
+            calculateCost();
+        }
+        
+        // Очистка маршрута
+        function clearRoute() {
+            routePoints = [];
+            historyStack = [];
+            donationsHistory = [];
+            
+            // Удаляем все метки с карты
+            placemarks.forEach(mark => {
+                myMap.geoObjects.remove(mark);
+            });
+            placemarks = [];
+            
+            // Очищаем полилинию
+            routePolyline.geometry.setCoordinates([]);
+            
+            updateRouteDisplay();
+            updateDonationHistoryDisplay();
+            updateDonationsSummary();
+        }
+        
+        // Обновление маршрута на карте
+        function updateMapRoute() {
+            const coordinates = routePoints.map(point => point.coords);
+            routePolyline.geometry.setCoordinates(coordinates);
+            
+            // Центрируем карту на последней точке
+            if (routePoints.length > 0) {
+                myMap.setCenter(routePoints[routePoints.length - 1].coords, 13, {duration: 300});
+            }
+        }
+        
+        // Обновление отображения маршрута
+        function updateRouteDisplay() {
+            const routePointsContainer = document.getElementById('routePoints');
+            routePointsContainer.innerHTML = '';
+            
+            // Показываем только стартовую и последнюю точки
+            if (routePoints.length > 0) {
+                const startPoint = routePoints[0];
+                const lastPoint = routePoints[routePoints.length - 1];
+                
+                // Стартовая точка
+                let startPointHtml = `
+                    <div class="point-item">
+                        <div class="point-icon start">С</div>
+                        <div class="point-details">
+                            <div class="point-title">${startPoint.title}</div>
+                            <div class="point-coords">${startPoint.coords[0].toFixed(5)}, ${startPoint.coords[1].toFixed(5)}</div>
+                        </div>
+                    </div>
+                `;
+                
+                // Последняя точка
+                let lastPointHtml = `
+                    <div class="point-item">
+                        <div class="point-icon end">Ф</div>
+                        <div class="point-details">
+                            <div class="point-title">${lastPoint.title}</div>
+                            <div class="point-coords">${lastPoint.coords[0].toFixed(5)}, ${lastPoint.coords[1].toFixed(5)}</div>
+                        </div>
+                    </div>
+                `;
+                
+                routePointsContainer.innerHTML = startPointHtml + lastPointHtml;
+            } else {
+                routePointsContainer.innerHTML = `
+                    <div class="point-item">
+                        <div class="point-icon start">С</div>
+                        <div class="point-details">
+                            <div class="point-title">СТАРТ</div>
+                            <div class="point-coords">Двойной клик на карту</div>
+                        </div>
+                    </div>
+                    <div class="point-item">
+                        <div class="point-icon end">Ф</div>
+                        <div class="point-details">
+                            <div class="point-title">ФИНИШ</div>
+                            <div class="point-coords">Используйте стрелки</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Рассчитываем общую длину маршрута
+            calculateTotalRouteLength();
+            calculateRouteTime();
+            
+            // Обновляем информацию о маршруте
+            document.getElementById('routeLength').textContent = `${routeLength.toFixed(0)} м`;
+            document.getElementById('routeTime').textContent = `${routeTime.toFixed(0)} мин`;
+        }
+        
+        // Расчет общей длины маршрута
+        function calculateTotalRouteLength() {
+            routeLength = 0;
+            
+            for (let i = 1; i < routePoints.length; i++) {
+                const prev = routePoints[i-1].coords;
+                const curr = routePoints[i].coords;
+                
+                const latDiff = (curr[0] - prev[0]) * 111000;
+                const lonDiff = (curr[1] - prev[1]) * 111000 * Math.cos(prev[0] * Math.PI / 180);
+                
+                routeLength += Math.sqrt(latDiff * latDiff + lonDiff * lonDiff);
+            }
+        }
+        
+        // Расчет времени маршрута
+        function calculateRouteTime() {
+            if (routeLength > 0 && transportSpeed > 0) {
+                const timeInHours = (routeLength / 1000) / transportSpeed;
+                routeTime = timeInHours * 60;
+            } else {
+                routeTime = 0;
+            }
+            
+            document.getElementById('routeTime').textContent = `${routeTime.toFixed(0)} мин`;
+            document.getElementById('priceDetails').innerHTML = 
+                `<span>Длина: ${routeLength.toFixed(0)} м</span><span>Время: ${routeTime.toFixed(0)} мин</span>`;
+        }
+        
+        // Расчет стоимости маршрута
+        function calculateCost() {
+            const pricePerMeter = parseFloat(document.getElementById('pricePerMeter').value) || 0;
+            const totalDonations = donationsHistory.reduce((sum, donation) => sum + donation.amount, 0);
+            
+            const baseCost = routeLength * pricePerMeter;
+            totalCost = baseCost + totalDonations;
+            
+            document.getElementById('totalPrice').textContent = `${totalCost.toFixed(2)} ₽`;
+        }
+        
+        // Генерация QR-кода (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+        function generateQRCode() {
+            const totalDonations = donationsHistory.reduce((sum, donation) => sum + donation.amount, 0);
+            
+            // Создаем упрощенные данные для QR-кода (без сложных объектов)
+            const qrData = {
+                route_length: routeLength.toFixed(0),
+                route_time: routeTime.toFixed(0),
+                total_cost: totalCost.toFixed(2),
+                total_donations: totalDonations.toFixed(0),
+                transport: selectedTransport,
+                price_per_meter: parseFloat(document.getElementById('pricePerMeter').value) || 0,
+                points_count: routePoints.length,
+                timestamp: new Date().toLocaleString('ru-RU')
+            };
+            
+            // Преобразуем в строку JSON
+            const qrString = JSON.stringify(qrData, null, 2);
+            
+            // Очищаем контейнер QR-кода
+            const qrContainer = document.getElementById('qrCode');
+            qrContainer.innerHTML = '';
+            
+            try {
+                // Создаем новый экземпляр QR-кода
+                qrCodeInstance = new QRCode(qrContainer, {
+                    text: qrString,
+                    width: 180,
+                    height: 180,
+                    colorDark: "#1a1a2e",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                
+                console.log("QR-код успешно сгенерирован");
+            } catch (error) {
+                console.error("Ошибка генерации QR-кода:", error);
+                
+                // Альтернативный метод создания QR-кода
+                try {
+                    // Очищаем контейнер
+                    qrContainer.innerHTML = '';
+                    
+                    // Создаем canvas для QR-кода
+                    const canvas = document.createElement('canvas');
+                    qrContainer.appendChild(canvas);
+                    
+                    // Используем альтернативный метод
+                    QRCode.toCanvas(canvas, qrString, {
+                        width: 180,
+                        margin: 1,
+                        color: {
+                            dark: '#1a1a2e',
+                            light: '#ffffff'
+                        }
+                    }, function(error) {
+                        if (error) {
+                            console.error("Альтернативный метод также не сработал:", error);
+                            // Если все методы не работают, показываем сообщение
+                            qrContainer.innerHTML = `
+                                <div style="padding: 20px; text-align: center;">
+                                    <p style="color: var(--success); margin-bottom: 10px;">
+                                        <i class="fas fa-check-circle" style="font-size: 2rem;"></i>
+                                    </p>
+                                    <p style="color: white; font-weight: bold; margin-bottom: 5px;">Маршрут сохранен!</p>
+                                    <p style="color: #94a3b8; font-size: 0.9rem;">
+                                        Длина: ${routeLength.toFixed(0)} м<br>
+                                        Время: ${routeTime.toFixed(0)} мин<br>
+                                        Стоимость: ${totalCost.toFixed(2)} ₽<br>
+                                        Донаты: ${totalDonations.toFixed(0)} ₽
+                                    </p>
+                                </div>
+                            `;
+                        }
+                    });
+                } catch (altError) {
+                    console.error("Альтернативный метод тоже не сработал:", altError);
+                    // Показываем данные в текстовом виде
+                    qrContainer.innerHTML = `
+                        <div style="padding: 20px; text-align: center;">
+                            <p style="color: var(--success); margin-bottom: 10px;">
+                                <i class="fas fa-check-circle" style="font-size: 2rem;"></i>
+                            </p>
+                            <p style="color: white; font-weight: bold; margin-bottom: 5px;">Данные маршрута:</p>
+                            <div style="color: #94a3b8; font-size: 0.85rem; text-align: left; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 5px;">
+                                <div><strong>Длина:</strong> ${routeLength.toFixed(0)} м</div>
+                                <div><strong>Время:</strong> ${routeTime.toFixed(0)} мин</div>
+                                <div><strong>Стоимость:</strong> ${totalCost.toFixed(2)} ₽</div>
+                                <div><strong>Донаты:</strong> ${totalDonations.toFixed(0)} ₽</div>
+                                <div><strong>Транспорт:</strong> ${selectedTransport === 'walk' ? 'Пешком' : selectedTransport === 'bike' ? 'Велосипед' : 'Машина'}</div>
+                                <div><strong>Цена за метр:</strong> ${parseFloat(document.getElementById('pricePerMeter').value) || 0} ₽/м</div>
+                                <div><strong>Точек маршрута:</strong> ${routePoints.length}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            // Обновляем информацию в модалке
+            document.getElementById('qrLength').textContent = `${routeLength.toFixed(0)} м`;
+            document.getElementById('qrTime').textContent = `${routeTime.toFixed(0)} мин`;
+            document.getElementById('qrCost').textContent = `${totalCost.toFixed(2)} ₽`;
+            document.getElementById('qrDonations').textContent = `${totalDonations.toFixed(0)} ₽`;
+        }
+        
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', function() {
+            calculateCost();
+        });
+    </script>
+</body>
+</html>
