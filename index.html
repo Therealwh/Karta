@@ -6,8 +6,6 @@
     <title>КартаЦия PRO - Умный расчет маршрута</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
-    <!-- Подключаем библиотеку QR-кода -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- Яндекс Карты API -->
     <script src="https://api-maps.yandex.ru/2.1/?apikey=2001ce9e-8526-43e3-88d1-46e20237699f&lang=ru_RU" type="text/javascript"></script>
     <style>
@@ -1188,9 +1186,6 @@
         // История для кнопки "Назад"
         let historyStack = [];
         
-        // Переменная для хранения экземпляра QR-кода
-        let qrCodeInstance = null;
-        
         // Инициализация карты Яндекс
         ymaps.ready(initMap);
         
@@ -1826,103 +1821,68 @@
             document.getElementById('totalPrice').textContent = `${totalCost.toFixed(2)} ₽`;
         }
         
-        // Генерация QR-кода (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+        // Генерация QR-кода (РАБОЧАЯ ВЕРСИЯ)
         function generateQRCode() {
             const totalDonations = donationsHistory.reduce((sum, donation) => sum + donation.amount, 0);
             
-            // Создаем упрощенные данные для QR-кода (без сложных объектов)
+            // Создаем данные для QR-кода
             const qrData = {
-                route_length: routeLength.toFixed(0),
-                route_time: routeTime.toFixed(0),
-                total_cost: totalCost.toFixed(2),
-                total_donations: totalDonations.toFixed(0),
-                transport: selectedTransport,
-                price_per_meter: parseFloat(document.getElementById('pricePerMeter').value) || 0,
-                points_count: routePoints.length,
-                timestamp: new Date().toLocaleString('ru-RU')
+                length: routeLength.toFixed(0),
+                time: routeTime.toFixed(0),
+                cost: totalCost.toFixed(2),
+                donations: totalDonations.toFixed(0),
+                transport: selectedTransport === 'walk' ? 'Пешком' : selectedTransport === 'bike' ? 'Велосипед' : 'Машина',
+                price: parseFloat(document.getElementById('pricePerMeter').value) || 0,
+                points: routePoints.length,
+                date: new Date().toLocaleString('ru-RU'),
+                start: routePoints.length > 0 ? `${routePoints[0].coords[0].toFixed(5)},${routePoints[0].coords[1].toFixed(5)}` : null,
+                end: routePoints.length > 0 ? `${routePoints[routePoints.length-1].coords[0].toFixed(5)},${routePoints[routePoints.length-1].coords[1].toFixed(5)}` : null
             };
             
-            // Преобразуем в строку JSON
-            const qrString = JSON.stringify(qrData, null, 2);
+            // Преобразуем в строку
+            const qrString = JSON.stringify(qrData);
             
-            // Очищаем контейнер QR-кода
+            // Очищаем контейнер
             const qrContainer = document.getElementById('qrCode');
             qrContainer.innerHTML = '';
             
-            try {
-                // Создаем новый экземпляр QR-кода
-                qrCodeInstance = new QRCode(qrContainer, {
-                    text: qrString,
-                    width: 180,
-                    height: 180,
-                    colorDark: "#1a1a2e",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.H
-                });
-                
-                console.log("QR-код успешно сгенерирован");
-            } catch (error) {
-                console.error("Ошибка генерации QR-кода:", error);
-                
-                // Альтернативный метод создания QR-кода
-                try {
-                    // Очищаем контейнер
-                    qrContainer.innerHTML = '';
-                    
-                    // Создаем canvas для QR-кода
-                    const canvas = document.createElement('canvas');
-                    qrContainer.appendChild(canvas);
-                    
-                    // Используем альтернативный метод
-                    QRCode.toCanvas(canvas, qrString, {
-                        width: 180,
-                        margin: 1,
-                        color: {
-                            dark: '#1a1a2e',
-                            light: '#ffffff'
-                        }
-                    }, function(error) {
-                        if (error) {
-                            console.error("Альтернативный метод также не сработал:", error);
-                            // Если все методы не работают, показываем сообщение
-                            qrContainer.innerHTML = `
-                                <div style="padding: 20px; text-align: center;">
-                                    <p style="color: var(--success); margin-bottom: 10px;">
-                                        <i class="fas fa-check-circle" style="font-size: 2rem;"></i>
-                                    </p>
-                                    <p style="color: white; font-weight: bold; margin-bottom: 5px;">Маршрут сохранен!</p>
-                                    <p style="color: #94a3b8; font-size: 0.9rem;">
-                                        Длина: ${routeLength.toFixed(0)} м<br>
-                                        Время: ${routeTime.toFixed(0)} мин<br>
-                                        Стоимость: ${totalCost.toFixed(2)} ₽<br>
-                                        Донаты: ${totalDonations.toFixed(0)} ₽
-                                    </p>
-                                </div>
-                            `;
-                        }
-                    });
-                } catch (altError) {
-                    console.error("Альтернативный метод тоже не сработал:", altError);
-                    // Показываем данные в текстовом виде
+            // Создаем canvas для QR-кода
+            const canvas = document.createElement('canvas');
+            qrContainer.appendChild(canvas);
+            
+            // Генерируем QR-код
+            QRCode.toCanvas(canvas, qrString, {
+                width: 180,
+                margin: 1,
+                color: {
+                    dark: '#1a1a2e',
+                    light: '#ffffff'
+                }
+            }, function(error) {
+                if (error) {
+                    console.error("Ошибка генерации QR-кода:", error);
+                    // Показываем данные в виде текста
                     qrContainer.innerHTML = `
                         <div style="padding: 20px; text-align: center;">
                             <p style="color: var(--success); margin-bottom: 10px;">
                                 <i class="fas fa-check-circle" style="font-size: 2rem;"></i>
                             </p>
-                            <p style="color: white; font-weight: bold; margin-bottom: 5px;">Данные маршрута:</p>
+                            <p style="color: white; font-weight: bold; margin-bottom: 5px;">Маршрут сохранен!</p>
                             <div style="color: #94a3b8; font-size: 0.85rem; text-align: left; background: rgba(255,255,255,0.1); padding: 10px; border-radius: 5px;">
-                                <div><strong>Длина:</strong> ${routeLength.toFixed(0)} м</div>
-                                <div><strong>Время:</strong> ${routeTime.toFixed(0)} мин</div>
-                                <div><strong>Стоимость:</strong> ${totalCost.toFixed(2)} ₽</div>
-                                <div><strong>Донаты:</strong> ${totalDonations.toFixed(0)} ₽</div>
-                                <div><strong>Транспорт:</strong> ${selectedTransport === 'walk' ? 'Пешком' : selectedTransport === 'bike' ? 'Велосипед' : 'Машина'}</div>
-                                <div><strong>Цена за метр:</strong> ${parseFloat(document.getElementById('pricePerMeter').value) || 0} ₽/м</div>
-                                <div><strong>Точек маршрута:</strong> ${routePoints.length}</div>
+                                <div><strong>Длина:</strong> ${qrData.length} м</div>
+                                <div><strong>Время:</strong> ${qrData.time} мин</div>
+                                <div><strong>Стоимость:</strong> ${qrData.cost} ₽</div>
+                                <div><strong>Донаты:</strong> ${qrData.donations} ₽</div>
+                                <div><strong>Транспорт:</strong> ${qrData.transport}</div>
+                                <div><strong>Цена за метр:</strong> ${qrData.price} ₽/м</div>
+                                <div><strong>Точек маршрута:</strong> ${qrData.points}</div>
                             </div>
                         </div>
                     `;
+                } else {
+                    console.log("QR-код успешно сгенерирован");
                 }
-            }
+            });
             
             // Обновляем информацию в модалке
             document.getElementById('qrLength').textContent = `${routeLength.toFixed(0)} м`;
@@ -1931,10 +1891,36 @@
             document.getElementById('qrDonations').textContent = `${totalDonations.toFixed(0)} ₽`;
         }
         
+        // Загружаем библиотеку QR-кода динамически
+        function loadQRCodeLibrary() {
+            return new Promise((resolve, reject) => {
+                if (typeof QRCode !== 'undefined') {
+                    resolve();
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+        
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', function() {
             calculateCost();
+            
+            // Загружаем библиотеку QR-кода
+            loadQRCodeLibrary().then(() => {
+                console.log("Библиотека QR-кода загружена");
+            }).catch(error => {
+                console.error("Ошибка загрузки библиотеки QR-кода:", error);
+            });
         });
     </script>
+    
+    <!-- Подключаем библиотеку QR-кода -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </body>
 </html>
